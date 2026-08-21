@@ -51,14 +51,20 @@ def prepare_urbansound(cfg: ExperimentConfig, force: bool = False) -> Path:
     ).to(cfg.device)
     all_x, all_y, all_fold = [], [], []
     processed = URBANSOUND_ROOT / "processed"
-    metadata = URBANSOUND_ROOT / "metadata" / "UrbanSound8K.csv"
-    if not processed.exists() and not metadata.exists():
+    metadata_candidates = [
+        URBANSOUND_ROOT / "metadata" / "UrbanSound8K.csv",
+        URBANSOUND_ROOT / "UrbanSound8K.csv",
+    ]
+    metadata = next((path for path in metadata_candidates if path.exists()), None)
+    audio_root = URBANSOUND_ROOT / "audio" if (URBANSOUND_ROOT / "audio").exists() else URBANSOUND_ROOT
+    if not processed.exists() and metadata is None:
         raise FileNotFoundError(
             f"UrbanSound8K was not found at {URBANSOUND_ROOT}. "
-            "Download the official archive and keep its audio/ and metadata/ directories."
+            "Expected either the official audio/ and metadata/ directories or "
+            "the processed/fold_*.npy layout."
         )
     metadata_rows = None
-    if metadata.exists():
+    if metadata is not None:
         with metadata.open("r", encoding="utf-8-sig", newline="") as stream:
             metadata_rows = list(csv.DictReader(stream))
         metadata_rows.sort(key=lambda row: (int(row["fold"]), row["slice_file_name"]))
@@ -72,6 +78,10 @@ def prepare_urbansound(cfg: ExperimentConfig, force: bool = False) -> Path:
             iterator = ((torch.from_numpy(np.stack([r["waveform"] for r in batch])),
                          [int(r["target"]) for r in batch]) for batch in batches)
         else:
+            if metadata_rows is None:
+                raise FileNotFoundError(
+                    f"Missing {processed_fold.name} and UrbanSound8K metadata under {URBANSOUND_ROOT}."
+                )
             fold_rows = [row for row in metadata_rows if int(row["fold"]) == fold]
             raw_batches = [fold_rows[start:start + 32] for start in range(0, len(fold_rows), 32)]
 
@@ -80,7 +90,7 @@ def prepare_urbansound(cfg: ExperimentConfig, force: bool = False) -> Path:
                     waves = []
                     for row in batch:
                         wave, sample_rate = torchaudio.load(
-                            URBANSOUND_ROOT / "audio" / f"fold{fold}" / row["slice_file_name"]
+                            audio_root / f"fold{fold}" / row["slice_file_name"]
                         )
                         wave = wave.mean(dim=0)
                         if sample_rate != 22050:
@@ -291,3 +301,4 @@ def dataset_summary(cfg: ExperimentConfig, data: SignalData, clients: Sequence[D
         "test_fold": cfg.esc50_test_fold if cfg.dataset == "esc50" else None,
         "validation_fold": cfg.esc50_val_fold if cfg.dataset == "esc50" else None,
     }
+
