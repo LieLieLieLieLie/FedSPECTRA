@@ -64,14 +64,11 @@ Individual stages can be executed as follows:
 python run_experiments.py --all
 
 # ESC-50: five baselines followed by the locked FedSPECTRA protocol
-python run_esc50_cv.py --methods FedAvg FedExP FedDisco FPL FedLESAM --run-tag v2
-python run_esc50_locked.py
+python run_esc50.py all
 
 # Ablations and controlled stress tests
 python run_experiments.py --dataset urbansound8k --seed 2027 --ablation
-python run_ablation_multiseed.py
-python run_staged_ablation.py
-python run_high_shift_ablation.py
+python run_ablations.py all
 python run_experiments.py --dataset urbansound8k --seed 2027 --sensitivity
 python run_experiments.py --dataset urbansound8k --seed 2027 --heterogeneity
 
