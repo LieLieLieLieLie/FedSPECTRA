@@ -1,0 +1,12 @@
+data/
+results/
+tmp/
+__pycache__/
+*.py[cod]
+*.pkl
+*.pt
+*.pth
+*.log
+.pytest_cache/
+.idea/
+.vscode/
